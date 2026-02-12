@@ -1,29 +1,34 @@
-# K4 Crypto — Rust Implementation
+# satrin-feed-rs
 
 ## Overview
 
-Low-latency, multi-source, redundant cryptocurrency market data and trading system.
+Rust implementation of a low-latency cryptocurrency market
+data and trading system.
 
 ## Architecture
 
-```
-Exchange WS ──► k4-md module ──► dedup ──► SHM (k4-core/shm)
-                                       └──► UDP (k4-core/udp)
-Strategy ──► k4-td module ──► Exchange REST/WS API
+Each exchange provides `build(config) -> Vec<StreamDef>`.
+The generic `GenericMd` engine (in `pipeline.rs`) handles
+SHM, channels, dedup, and WS automatically.
+
+```text
+Exchange WS ──► StreamDef ──► GenericMd ──► dedup ──► SHM + UDP
+Strategy ──► k4-td ──► Exchange REST/WS API
 ```
 
 ## Crate Map (4 crates)
 
-| Crate | Purpose | Key modules |
-|-------|---------|-------------|
-| `k4-core` | Types, config, SHM, UDP, WebSocket, latency, dedup, logging | `types/`, `config`, `shm`, `udp`, `ws/` |
-| `k4-md` | Market data (Binance/OKX/Bitget/Bybit/UDP) | `binance/`, `okx/`, `bitget/`, `bybit/`, `udp/` |
-| `k4-td` | Trading (Binance Spot + Futures) | `binance/` |
-| `k4-runner` | CLI entry point, module orchestration | `main.rs` |
+| Crate | Purpose |
+|-------|---------|
+| `k4-core` | Types, config, SHM, UDP, WS, dedup, logging |
+| `k4-md` | MD: generic pipeline + per-exchange parsers |
+| `k4-td` | TD: Binance Spot + Futures |
+| `k4-runner` | CLI entry point |
 
 ## Key Patterns
 
-- **Redundant connections**: Same subscription × N connections. Fastest wins.
-- **Dedup by update_id**: `UpdateIdDedup` (monotonic) or `UuidDedup` (hash-based for Bybit futures).
-- **SHM ring buffer**: `ShmMdStore<T>` with per-symbol circular buffers and atomic indexing.
-- **Async + blocking hybrid**: WS connections are tokio tasks; dedup loops run on `spawn_blocking`.
+- **StreamDef pipeline** — data-driven exchange modules
+- **rkyv for UDP** — safe zero-copy serialization
+- **SHM ring buffers** — atomic indexing, raw repr(C)
+- **CPU pinning** — core_affinity in dedup threads
+- **Redundant WS** — N connections, fastest wins

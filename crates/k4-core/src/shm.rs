@@ -295,9 +295,10 @@ impl<T: Copy> Drop for ShmMdStore<T> {
         #[cfg(not(target_os = "linux"))]
         unsafe {
             if !self.base.is_null()
-                && let Ok(layout) = std::alloc::Layout::from_size_align(self.total_size, 64) {
-                    std::alloc::dealloc(self.base, layout);
-                }
+                && let Ok(layout) = std::alloc::Layout::from_size_align(self.total_size, 64)
+            {
+                std::alloc::dealloc(self.base, layout);
+            }
         }
     }
 }

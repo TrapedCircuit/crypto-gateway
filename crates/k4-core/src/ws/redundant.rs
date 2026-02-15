@@ -94,27 +94,28 @@ impl RedundantWsClient {
 
         // Reset the worst one
         if let Some(idx) = worst_idx
-            && self.connections.len() > 1 {
-                warn!("[redundant] resetting slowest connection (idx={idx}, avg={worst_avg:.0}µs)");
-                // Stop the old connection
-                if let Some(conn) = self.connections.get_mut(idx) {
-                    conn.stop().await;
-                }
-                // Reset latency collector
-                if let Some(lc) = self.latency_collectors.get_mut(idx) {
-                    lc.reset();
-                }
-                // Start a replacement
-                let mut new_config = self.config.base_config.clone();
-                new_config.id = self.next_conn_id;
-                self.next_conn_id += 1;
-
-                let mut new_conn = WsConnection::new(new_config);
-                new_conn.start(on_text, on_binary);
-                self.connections[idx] = new_conn;
-
-                return Some(idx);
+            && self.connections.len() > 1
+        {
+            warn!("[redundant] resetting slowest connection (idx={idx}, avg={worst_avg:.0}µs)");
+            // Stop the old connection
+            if let Some(conn) = self.connections.get_mut(idx) {
+                conn.stop().await;
             }
+            // Reset latency collector
+            if let Some(lc) = self.latency_collectors.get_mut(idx) {
+                lc.reset();
+            }
+            // Start a replacement
+            let mut new_config = self.config.base_config.clone();
+            new_config.id = self.next_conn_id;
+            self.next_conn_id += 1;
+
+            let mut new_conn = WsConnection::new(new_config);
+            new_conn.start(on_text, on_binary);
+            self.connections[idx] = new_conn;
+
+            return Some(idx);
+        }
 
         // Reset all latency collectors for the next evaluation period
         for lc in &mut self.latency_collectors {

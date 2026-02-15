@@ -178,9 +178,7 @@ fn parse_depth_to_md(
     let asks = parse_levels(data.get("a"));
 
     let mut books_guard = books.lock().unwrap();
-    let book = books_guard
-        .entry(sym.to_string())
-        .or_default();
+    let book = books_guard.entry(sym.to_string()).or_default();
 
     if msg_type == "snapshot" {
         book.set_snapshot(&bids, &asks);
